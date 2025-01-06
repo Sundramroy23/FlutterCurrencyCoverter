@@ -11,19 +11,20 @@ class TempPage extends StatefulWidget {
 class _TempPageState extends State<TempPage> {
   final TextEditingController _textController = TextEditingController();
   double value = 0.0;
-  double fetchAmt() {
-    double dollars = double.parse(_textController.text);
+  void fetchAmt() {
+    final double dollars = double.tryParse(_textController.text) ?? 0.0;
     _textController.clear();
     setState(() {
       value = dollars * 81;
     });
-    return value;
+    // return value;
   }
 
   void reset() {
-    value = 0.0;
-    _textController.clear();
-    setState(() {});
+    setState(() {
+      value = 0.0;
+      _textController.clear();
+    });
   }
 
   @override
@@ -64,7 +65,7 @@ class _TempPageState extends State<TempPage> {
                 margin: const EdgeInsets.only(top: 75),
                 child: Text(
                   "INR $value",
-                  style: TextStyle(fontSize: 30),
+                  style: const TextStyle(fontSize: 30),
                 ),
               ),
               Container(
@@ -96,15 +97,16 @@ class _TempPageState extends State<TempPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Expanded(
-                    
                     child: Container(
-                      margin: const EdgeInsets.only(top: 20, left: 10, bottom: 10),
+                      margin:
+                          const EdgeInsets.only(top: 20, left: 10, bottom: 10),
                       child: ElevatedButton(
                         onPressed: () {
                           fetchAmt();
                         },
                         style: TextButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(255, 27, 95, 151),
+                          backgroundColor:
+                              const Color.fromARGB(255, 27, 95, 151),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -119,13 +121,15 @@ class _TempPageState extends State<TempPage> {
                   const SizedBox(width: 10), // Add spacing between the buttons
                   Expanded(
                     child: Container(
-                      margin: const EdgeInsets.only(top: 20, right: 10, bottom: 10),
+                      margin:
+                          const EdgeInsets.only(top: 20, right: 10, bottom: 10),
                       child: ElevatedButton(
                         onPressed: () {
                           reset();
                         },
                         style: TextButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(255, 151, 52, 27),
+                          backgroundColor:
+                              const Color.fromARGB(255, 151, 52, 27),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
