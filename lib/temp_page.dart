@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-// import 'packet:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class TempPage extends StatefulWidget {
   const TempPage({super.key});
@@ -9,19 +10,46 @@ class TempPage extends StatefulWidget {
   State<TempPage> createState() => _TempPageState();
 }
 
+class ExchangeRateService {
+  // final String url = dotenv.env['EXCHANGE_RATE_API_URL'] ?? '';
+  final String url = "https://v6.exchangerate-api.com/v6/7f400443bf42e2c2c1c430c1/latest/USD";
+
+  Future<double?> getUsdToInrRate() async {
+    try {
+      if (url.isEmpty) {
+        throw Exception("API URL not configured correctly.");
+      }
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final rates = data['conversion_rates'];
+        return rates['INR'];
+      } else {
+        throw Exception("Failed to fetch rates. HTTP Status: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Error fetching exchange rate: $e");
+      return null;
+    }
+  }
+}
+
 class CustomButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
   final Color color;
+
   const CustomButton({
     required this.label,
     required this.onPressed,
     required this.color,
     Key? key,
   }) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return Container(
       margin: const EdgeInsets.all(10),
       child: ElevatedButton(
@@ -33,7 +61,7 @@ class CustomButton extends StatelessWidget {
           ),
           foregroundColor: Colors.white,
           elevation: 10,
-          minimumSize: Size(double.infinity, 50),
+          minimumSize: const Size(double.infinity, 50),
         ),
         child: Text(label),
       ),
@@ -43,19 +71,46 @@ class CustomButton extends StatelessWidget {
 
 class _TempPageState extends State<TempPage> {
   final TextEditingController _textController = TextEditingController();
-  double value = 0.0;
-  void fetchAmt() {
-    final double dollars = double.tryParse(_textController.text) ?? 0.0;
-    _textController.clear();
+  double exchangeRate = 0.0;
+  double convertedValue = 0.0;
+  String apiErrorMessage = "";
+
+  @override
+  void initState() {
+    super.initState();
+    fetchExchangeRate();
+  }
+
+  Future<void> fetchExchangeRate() async {
+    final rate = await ExchangeRateService().getUsdToInrRate();
     setState(() {
-      value = dollars * 81;
+      if (rate != null) {
+        exchangeRate = rate;
+      } else {
+        apiErrorMessage = "Failed to fetch the exchange rate. Using fallback value.";
+        exchangeRate = 85.76;
+      }
     });
-    // return value;
+  }
+
+  void convertAmount() {
+    final double dollars = double.tryParse(_textController.text) ?? 0.0;
+
+    if (dollars == 0.0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a valid USD amount.")),
+      );
+      return;
+    }
+
+    setState(() {
+      convertedValue = dollars * exchangeRate;
+    });
   }
 
   void reset() {
     setState(() {
-      value = 0.0;
+      convertedValue = 0.0;
       _textController.clear();
     });
   }
@@ -95,33 +150,38 @@ class _TempPageState extends State<TempPage> {
           child: Column(
             children: [
               Container(
-                margin: const EdgeInsets.only(top: 75),
-                child: Text(
-                  "INR $value",
-                  style: const TextStyle(fontSize: 30),
-                ),
+                margin: const EdgeInsets.only(top: 50),
+                child: convertedValue > 0.0
+                    ? Text(
+                        "INR ${convertedValue.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : exchangeRate > 0.0
+                        ? const Text("Enter USD to Convert", style: TextStyle(fontSize: 16))
+                        : const CircularProgressIndicator(),
               ),
+              const SizedBox(height: 20),
               Container(
-                margin: EdgeInsets.all(10),
+                margin: const EdgeInsets.all(10),
                 child: TextField(
-                  // prefixIcon: Icon(Icons.currency_rupee_outlined),
                   controller: _textController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     prefixIcon: Container(
-                        margin: EdgeInsets.only(top: 10, bottom: 10, left: 10),
-                        child: const Text(
-                          "\$",
-                          style: TextStyle(fontSize: 20),
-                        )),
-                    // icon: Icon(Icons.currency_rupee_outlined),
+                      margin: const EdgeInsets.only(top: 10, bottom: 10, left: 10),
+                      child: const Text(
+                        "\$",
+                        style: TextStyle(fontSize: 20),
+                      ),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: const BorderSide(color: Colors.black),
                     ),
                     hintText: 'Enter USD',
-                    // icon: Icon(Icons.currency_rupee_outlined),
                     hintStyle: const TextStyle(color: Colors.black54),
                   ),
                 ),
@@ -132,68 +192,30 @@ class _TempPageState extends State<TempPage> {
                   Expanded(
                     child: CustomButton(
                       label: "CONVERT",
-                      onPressed: fetchAmt,
+                      onPressed: convertAmount,
                       color: const Color.fromARGB(255, 27, 95, 151),
                     ),
                   ),
-                  const SizedBox(width: 10), // Add spacing between the buttons
+                  const SizedBox(width: 10),
                   Expanded(
                     child: CustomButton(
                       label: "RESET",
                       onPressed: reset,
                       color: const Color.fromARGB(255, 238, 33, 33),
-                    )
+                    ),
                   ),
                 ],
-              )
-
-              // Container(
-              //   margin: EdgeInsets.all(10),
-              //   // padding: EdgeInsets.all(10),
-              //   child: ElevatedButton(
-              //     onPressed: () {
-              //       fetchAmt();
-              //       // print(value);
-              //     },
-              //     style: TextButton.styleFrom(
-              //       backgroundColor: const Color.fromARGB(
-              //         255,
-              //         27,
-              //         95,
-              //         151,
-              //       ),
-              //       shape: RoundedRectangleBorder(
-              //         borderRadius: BorderRadius.circular(10),
-              //       ),
-              //       foregroundColor: Colors.white,
-              //       elevation: 10,
-              //       minimumSize: const Size(double.infinity, 50),
-              //       // fixedSize: Size(double.infinity, 20)
-              //     ),
-              //     child: const Text('CONVERT'),
-              //   ),
-              // ),
-              // Container(
-              //   margin: EdgeInsets.all(10),
-              //   // padding: EdgeInsets.all(10),
-              //   child: ElevatedButton(
-              //     onPressed: () {
-              //       reset();
-              //       // print(value);
-              //     },
-              //     style: TextButton.styleFrom(
-              //       backgroundColor: const Color.fromARGB(255, 151, 52, 27),
-              //       shape: RoundedRectangleBorder(
-              //         borderRadius: BorderRadius.circular(10),
-              //       ),
-              //       foregroundColor: Colors.white,
-              //       elevation: 10,
-              //       minimumSize: const Size(double.infinity, 50),
-              //       // fixedSize: Size(double.infinity, 20)
-              //     ),
-              //     child: const Text('RESET'),
-              //   ),
-              // ),
+              ),
+              const SizedBox(height: 20),
+              if (apiErrorMessage.isNotEmpty)
+                Text(
+                  apiErrorMessage,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
             ],
           ),
         ),
@@ -201,6 +223,3 @@ class _TempPageState extends State<TempPage> {
     );
   }
 }
-
-//use TextButton.styleFrom for styling without using MaterialStatePropertyAll everytime...
-//lets make some changes to understand how to commit if changes are made to the code
