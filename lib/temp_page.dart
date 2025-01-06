@@ -12,7 +12,7 @@ class TempPage extends StatefulWidget {
 
 class ExchangeRateService {
   // final String url = dotenv.env['EXCHANGE_RATE_API_URL'] ?? '';
-  final String url = "https://v6.exchangerate-api.com/v6/7f400443bf42e2c2c1c430c1/latest/USD";
+  final String url = "https://v6.exchangerate-api.com/v6/##/latest/USD";
 
   Future<double?> getUsdToInrRate() async {
     try {
